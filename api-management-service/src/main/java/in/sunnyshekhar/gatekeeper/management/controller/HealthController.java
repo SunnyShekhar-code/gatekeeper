@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import in.sunnyshekhar.gatekeeper.management.dto.HealthRespnse;
+import in.sunnyshekhar.gatekeeper.management.dto.responseDto.HealthRespnse;
 import in.sunnyshekhar.gatekeeper.management.service.HealthService;
 
 @RestController 

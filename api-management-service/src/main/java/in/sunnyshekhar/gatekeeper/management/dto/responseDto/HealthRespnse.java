@@ -1,4 +1,4 @@
-package in.sunnyshekhar.gatekeeper.management.dto;
+package in.sunnyshekhar.gatekeeper.management.dto.responseDto;
 
 import java.time.LocalDateTime;
 
