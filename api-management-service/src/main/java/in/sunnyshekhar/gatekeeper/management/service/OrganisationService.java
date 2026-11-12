@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.cglib.core.Local;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.OrganisationRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.OrganisationStatusRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.TenantAdminRequest;
+import in.sunnyshekhar.gatekeeper.management.dto.requestDto.TenantOrganisationRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.responseDto.OrganisationResponse;
 import in.sunnyshekhar.gatekeeper.management.dto.responseDto.TenantAdminResponse;
 import in.sunnyshekhar.gatekeeper.management.entity.ManagementUser;
@@ -29,13 +31,15 @@ public class OrganisationService {
     private final ManagementUserRepository managementUserRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TenantContext tenantContext;
 
     public OrganisationService(OrganisationRepository organisationRepository,ManagementUserRepository managementUserRepository, 
-                RoleRepository roleRepository,PasswordEncoder passwordEncoder){
+                RoleRepository roleRepository,PasswordEncoder passwordEncoder, TenantContext tenantContext){
                             this.organisationRepository=organisationRepository;
                             this.managementUserRepository=managementUserRepository;
                             this.roleRepository=roleRepository;
                             this.passwordEncoder=passwordEncoder;
+                            this.tenantContext=tenantContext;
     }
 
 
@@ -203,5 +207,30 @@ public class OrganisationService {
             }
         }
       }
+
+      // crud ops for tenant
+
+      @Transactional (readOnly = true)
+      public OrganisationResponse getOwnOrganisation(){
+        return OrganisationResponse.from(tenantContext.getOrganisation());
+      }
+
+      @Transactional 
+      public OrganisationResponse updateOwnOrganisation(TenantOrganisationRequest request){
+        long startedAt = System.nanoTime();
+
+        Organisation organisation=tenantContext.getOrganisation();
+
+        if(!organisation.getName().equalsIgnoreCase(request.getName()) && 
+           organisationRepository.existsByNameIgnoreCase(request.getName()) ){ 
+            throw new ApiException(HttpStatus.CONFLICT, "Organisation name already exists");
+        }
+
+        organisation.setName(request.getName());
+        organisation.setUpdatedAt(LocalDateTime.now());
+
+        return OrganisationResponse.from(organisation);
+      }
+
     
 }

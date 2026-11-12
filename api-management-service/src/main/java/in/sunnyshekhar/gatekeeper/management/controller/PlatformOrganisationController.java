@@ -75,18 +75,18 @@ public class PlatformOrganisationController {
                 .body(organisationService.createTenantAdmin(organisationId, request));
     }
 
-    @GetMapping("/{organizationId}/tenant-admin")
+    @GetMapping("/{organisationId}/tenant-admin")
     public ResponseEntity<TenantAdminResponse> getTenantAdmin(@PathVariable Long organisationId) {
         return ResponseEntity.ok(organisationService.getTenantAdmin(organisationId));
     }
 
-    @PutMapping("/{organizationId}/tenant-admin")
+    @PutMapping("/{organisationId}/tenant-admin")
     public ResponseEntity<TenantAdminResponse> updateTenantAdmin(@PathVariable Long organisationId,
                                                                  @Valid @RequestBody TenantAdminRequest request) {
         return ResponseEntity.ok(organisationService.updateTenantAdmin(organisationId, request));
     }
 
-    @DeleteMapping("/{organizationId}/tenant-admin")
+    @DeleteMapping("/{organisationId}/tenant-admin")
     public ResponseEntity<Void> deleteTenantAdmin(@PathVariable Long organisationId) {
         organisationService.deleteTenantAdmin(organisationId);
         return ResponseEntity.noContent().build();
