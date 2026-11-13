@@ -35,7 +35,7 @@ public class ApiRoute {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "organisation_id", nullable = false)
+    @JoinColumn(name = "organization_id", nullable = false)
     private Organisation organisation;
 
     private String routeId;

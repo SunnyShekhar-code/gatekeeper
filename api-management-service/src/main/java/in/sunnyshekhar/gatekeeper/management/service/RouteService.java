@@ -46,7 +46,7 @@ public class RouteService {
         Organisation organization = tenantContext.getOrganisation();
         validate(request, organization);
 
-        if(apiRouteRepository.existsByOrganizationIdAndRouteId(organization.getId(), request.getRouteId())) {
+        if(apiRouteRepository.existsByOrganisation_IdAndRouteId(organization.getId(), request.getRouteId())) {
             throw new ApiException(HttpStatus.CONFLICT, "Route ID already exists for this organization");
         }
 
@@ -68,7 +68,8 @@ public class RouteService {
     @Transactional(readOnly = true)
     public List<RouteResponse> findAllForTenant() {
         Organisation organization = tenantContext.getOrganisation();
-        return toResponses(apiRouteRepository.findAllByOrganizationId(organization.getId()));
+        return toResponses(apiRouteRepository.findAllByOrganisation_Id(organization.getId()));
+        // return toResponses(apiRouteRepository.findAllByOrganizationId(organization.getId()));
     }
 
     @Transactional(readOnly= true)
@@ -107,8 +108,8 @@ public class RouteService {
     public RouteResponse changeStatus(Long id, RouteStatusRequest request) {
         long startedAt = System.nanoTime();
 
-        Organisation organization = tenantContext.getOrganisation();
-        ApiRoute route = getOwnedRoute(id, organization.getId());
+        Organisation organisation = tenantContext.getOrganisation();
+        ApiRoute route = getOwnedRoute(id, organisation.getId());
         route.setActive(request.getActive());
         route.setConfigurationVersion(route.getConfigurationVersion() + 1);
         route.setUpdatedAt(LocalDateTime.now());
@@ -128,8 +129,8 @@ public class RouteService {
     public void delete(Long id) {
         long startedAt = System.nanoTime();
 
-        Organisation organization = tenantContext.getOrganisation();
-        ApiRoute route = getOwnedRoute(id, organization.getId());
+        Organisation organisation = tenantContext.getOrganisation();
+        ApiRoute route = getOwnedRoute(id, organisation.getId());
         route.setConfigurationVersion(route.getConfigurationVersion() + 1);
         route.setUpdatedAt(LocalDateTime.now());
 
@@ -161,7 +162,7 @@ public class RouteService {
     // }
 
     private ApiRoute getOwnedRoute(Long id, Long organizationId) {
-        return apiRouteRepository.findByIdAndOrganizationId(id, organizationId)
+        return apiRouteRepository.findByIdAndOrganisation_Id(id, organizationId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Route not found"));
     }
 

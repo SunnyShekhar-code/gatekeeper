@@ -1,19 +1,25 @@
+
 package in.sunnyshekhar.gatekeeper.management.repository;
 
 import java.util.List;
 import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import in.sunnyshekhar.gatekeeper.management.entity.ApiRoute;
 import in.sunnyshekhar.gatekeeper.management.entity.OrganisationStatus;
 
-public interface ApiRouteRepository extends JpaRepository<ApiRoute,Long>{
-    List<ApiRoute> findAllByOrganizationId(Long organizationId);
+public interface ApiRouteRepository extends JpaRepository<ApiRoute, Long> {
 
-    List<ApiRoute> findAllByActiveTrueAndOrganizationStatus(OrganisationStatus status);
+    List<ApiRoute> findAllByOrganisation_Id(Long organizationId);
 
-    Optional<ApiRoute> findByIdAndOrganizationId(Long id, Long organizationId);
+    List<ApiRoute> findAllByActiveTrueAndOrganisation_Status(
+            OrganisationStatus status);
 
-    boolean existsByOrganizationIdAndRouteId(Long organizationId, String routeId);
-    
+  
+    Optional<ApiRoute> findByIdAndOrganisation_Id(
+            Long id, Long organizationId);
+
+    boolean existsByOrganisation_IdAndRouteId(
+            Long organizationId, String routeId);
 }
