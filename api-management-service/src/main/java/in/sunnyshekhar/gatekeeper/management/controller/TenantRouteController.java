@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.RouteRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.RouteStatusRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.responseDto.RouteResponse;
+import in.sunnyshekhar.gatekeeper.management.dto.responseDto.RouteVersionResponse;
 import in.sunnyshekhar.gatekeeper.management.service.RouteService;
 import jakarta.validation.Valid;
 
@@ -59,5 +60,10 @@ public class TenantRouteController {
     public ResponseEntity<Void> delete(@PathVariable Long id){
         routeService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping ("/route-versions/{routeId}")
+    public ResponseEntity<List<RouteVersionResponse>> getVesions(@PathVariable String routeId){
+        return ResponseEntity.ok(routeService.getVersions(routeId));
     }
 }
