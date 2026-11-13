@@ -32,14 +32,16 @@ public class OrganisationService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final TenantContext tenantContext;
+    private final AuditService auditService;
 
     public OrganisationService(OrganisationRepository organisationRepository,ManagementUserRepository managementUserRepository, 
-                RoleRepository roleRepository,PasswordEncoder passwordEncoder, TenantContext tenantContext){
+                RoleRepository roleRepository,PasswordEncoder passwordEncoder, TenantContext tenantContext, AuditService auditService){
                             this.organisationRepository=organisationRepository;
                             this.managementUserRepository=managementUserRepository;
                             this.roleRepository=roleRepository;
                             this.passwordEncoder=passwordEncoder;
                             this.tenantContext=tenantContext;
+                            this.auditService=auditService;
     }
 
 
@@ -58,6 +60,10 @@ public class OrganisationService {
 
 
         organisationRepository.save(organisation);
+
+        auditService.record(organisation,"CREATE ORGANISATON", "ORGANISATION", organisation.getId().toString(),
+         startedAt, "Organisation created in PENDING status");
+
 
         return OrganisationResponse.from(organisation);
 
@@ -90,6 +96,9 @@ public class OrganisationService {
         organisation.setSlug(request.getSlug());
         organisation.setUpdatedAt(LocalDateTime.now());
 
+        auditService.record(organisation,"UPDATE ORGANISATON", "ORGANISATION", id.toString(),
+         startedAt, "Organisation name and slug updated");
+
         return OrganisationResponse.from(organisation);
     }
 
@@ -97,17 +106,20 @@ public class OrganisationService {
     public OrganisationResponse changeStatus(Long id, OrganisationStatusRequest request) {
 
         long startedAt = System.nanoTime();
-        Organisation organization = getOrganisation(id);
+        Organisation organisation = getOrganisation(id);
 
         if(request.getStatus() == OrganisationStatus.DELETED) {
             throw new ApiException(HttpStatus.BAD_REQUEST,
                     "Use DELETE to soft-delete an organization");
         }
 
-        organization.setStatus(request.getStatus());
-        organization.setUpdatedAt(LocalDateTime.now());
+        organisation.setStatus(request.getStatus());
+        organisation.setUpdatedAt(LocalDateTime.now());
 
-        return OrganisationResponse.from(organization);
+        auditService.record(organisation,"CHANGE_ORGANISATON_STATUS", "ORGANISATION", id.toString(),
+         startedAt, "Status changed to "+organisation.getStatus());
+
+        return OrganisationResponse.from(organisation);
     }
 
     @Transactional
@@ -118,6 +130,9 @@ public class OrganisationService {
         organisation.setStatus(OrganisationStatus.DELETED);
         organisation.setDeletedAt(LocalDateTime.now());
         organisation.setUpdatedAt(LocalDateTime.now());
+
+        auditService.record(organisation,"DELETE_ORGANISATON", "ORGANISATION", id.toString(),
+        startedAt, "Organisation Soft Deleted");
     }
 
     @Transactional
@@ -148,6 +163,9 @@ public class OrganisationService {
         user.setUpdatedAt(LocalDateTime.now());
         managementUserRepository.save(user);
 
+        auditService.record(organisation,"CREATE_TENANT_ADMIN", "MANAGEMENT_USER", user.getId().toString(),
+         startedAt, "Tenant administrator created");
+
         return TenantAdminResponse.from(user);
     }
 
@@ -172,6 +190,9 @@ public class OrganisationService {
         user.setEnabled(request.isEnabled());
         user.setUpdatedAt(LocalDateTime.now());
 
+        auditService.record(user.getOrganisation(),"UPDATE_TENANT_ADMIN", "MANAGEMENT_USER", user.getId().toString(),
+         startedAt, "Tenant administrator updated");
+
         return TenantAdminResponse.from(user);
     }
 
@@ -182,6 +203,9 @@ public class OrganisationService {
         ManagementUser user = getTenantAdminEntity(organizationId);
 
         managementUserRepository.delete(user);
+
+        auditService.record(user.getOrganisation(),"DELETE_TENANT_ADMIN", "MANAGEMENT_USER", user.getId().toString(),
+         startedAt, "Tenant administrator deleted");
     }
     
 
@@ -228,6 +252,9 @@ public class OrganisationService {
 
         organisation.setName(request.getName());
         organisation.setUpdatedAt(LocalDateTime.now());
+
+        auditService.record(organisation,"UPDATE_OWN_ORGANISATION", "ORGANISATION",organisation.getId().toString(),
+         startedAt, "Tenant updated its own organisation name");
 
         return OrganisationResponse.from(organisation);
       }

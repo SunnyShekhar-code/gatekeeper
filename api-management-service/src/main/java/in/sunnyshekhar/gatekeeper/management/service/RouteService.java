@@ -16,15 +16,18 @@ import org.springframework.transaction.annotation.Transactional;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.HeaderRuleRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.RouteRequest;
 import in.sunnyshekhar.gatekeeper.management.dto.requestDto.RouteStatusRequest;
+import in.sunnyshekhar.gatekeeper.management.dto.responseDto.AuditRecordResponse;
 import in.sunnyshekhar.gatekeeper.management.dto.responseDto.RouteResponse;
 import in.sunnyshekhar.gatekeeper.management.dto.responseDto.RouteVersionResponse;
 import in.sunnyshekhar.gatekeeper.management.entity.ApiRoute;
+import in.sunnyshekhar.gatekeeper.management.entity.ControlPlaneAuditRecord;
 import in.sunnyshekhar.gatekeeper.management.entity.Organisation;
 import in.sunnyshekhar.gatekeeper.management.entity.OrganisationStatus;
 import in.sunnyshekhar.gatekeeper.management.entity.RouteConfigurationVersion;
 import in.sunnyshekhar.gatekeeper.management.entity.RouteHeaderRule;
 import in.sunnyshekhar.gatekeeper.management.exception.ApiException;
 import in.sunnyshekhar.gatekeeper.management.repository.ApiRouteRepository;
+import in.sunnyshekhar.gatekeeper.management.repository.ControlPlaneAuditRecordRepository;
 import in.sunnyshekhar.gatekeeper.management.repository.RouteConfigurationVersionRepository;
 import tools.jackson.databind.ObjectMapper;
 
@@ -35,29 +38,34 @@ public class RouteService {
     private final TenantContext tenantContext;
     private final ObjectMapper objectMapper;
     private final RouteConfigurationVersionRepository versionRepository;
+    private final ControlPlaneAuditRecordRepository auditRecordRepository;
+    private final AuditService auditService;
 
     public RouteService(ApiRouteRepository apiRouteRepository,
                         TenantContext tenantContext,
-                        ObjectMapper objectMapper,RouteConfigurationVersionRepository versionRepository) {
+                        ObjectMapper objectMapper,RouteConfigurationVersionRepository versionRepository,
+                        ControlPlaneAuditRecordRepository auditRecordRepository, AuditService auditService) {
         this.apiRouteRepository = apiRouteRepository;
         this.tenantContext = tenantContext;
         this.objectMapper = objectMapper;
         this.versionRepository=versionRepository;
+        this.auditRecordRepository = auditRecordRepository;
+        this.auditService=auditService;
     }
 
     @Transactional 
     public RouteResponse create(RouteRequest request) {
         long startedAt = System.nanoTime();
 
-        Organisation organization = tenantContext.getOrganisation();
-        validate(request, organization);
+        Organisation organisation = tenantContext.getOrganisation();
+        validate(request, organisation);
 
-        if(apiRouteRepository.existsByOrganisation_IdAndRouteId(organization.getId(), request.getRouteId())) {
-            throw new ApiException(HttpStatus.CONFLICT, "Route ID already exists for this organization");
+        if(apiRouteRepository.existsByOrganisation_IdAndRouteId(organisation.getId(), request.getRouteId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "Route ID already exists for this organisation");
         }
 
         ApiRoute route = new ApiRoute();
-        route.setOrganisation(organization);
+        route.setOrganisation(organisation);
         route.setConfigurationVersion(1L);
         route.setCreatedAt(LocalDateTime.now());
         apply(route, request);
@@ -65,17 +73,16 @@ public class RouteService {
 
         saveVersion(route, "CREATED");
 
-        // auditService.record(organization, "CREATE_ROUTE",
-        //         "API_ROUTE", route.getRouteId(), startedAt,
-        //         "Route configuration version 1 created");
+        auditService.record(organisation, "CREATE_ROUTE",
+                "API_ROUTE", route.getRouteId(), startedAt,
+                "Route configuration version 1 created");
         return RouteResponse.from(route);
     }
 
     @Transactional(readOnly = true)
     public List<RouteResponse> findAllForTenant() {
-        Organisation organization = tenantContext.getOrganisation();
-        return toResponses(apiRouteRepository.findAllByOrganisation_Id(organization.getId()));
-        // return toResponses(apiRouteRepository.findAllByOrganizationId(organization.getId()));
+        Organisation organisation = tenantContext.getOrganisation();
+        return toResponses(apiRouteRepository.findAllByOrganisation_Id(organisation.getId()));
     }
 
     @Transactional(readOnly= true)
@@ -103,9 +110,9 @@ public class RouteService {
 
         saveVersion(route, "UPDATED");
 
-        // auditService.record(organization, "UPDATE_ROUTE", "API_ROUTE",
-        //         route.getRouteId(), startedAt, "Route configuration version " +
-        //                 route.getConfigurationVersion() + " created");
+        auditService.record(organisation, "UPDATE_ROUTE", "API_ROUTE",
+                route.getRouteId(), startedAt, "Route configuration version " +
+                        route.getConfigurationVersion() + " created");
 
         return RouteResponse.from(route);
     }
@@ -125,8 +132,8 @@ public class RouteService {
 
         saveVersion(route, changeType);
 
-        // auditService.record(organization, action, "API_ROUTE", route.getRouteId(), startedAt,
-        //         "Route configuration version " + route.getConfigurationVersion() + " created");
+        auditService.record(organisation, action, "API_ROUTE", route.getRouteId(), startedAt,
+                "Route configuration version " + route.getConfigurationVersion() + " created");
 
         return RouteResponse.from(route);
     }
@@ -142,8 +149,8 @@ public class RouteService {
 
         saveVersion(route, "DELETED");
 
-        // auditService.record(organization, "DELETE_ROUTE", "API_ROUTE", route.getRouteId(), startedAt,
-        //         "Final configuration saved as version " + route.getConfigurationVersion());
+        auditService.record(organisation, "DELETE_ROUTE", "API_ROUTE", route.getRouteId(), startedAt,
+                "Final configuration saved as version " + route.getConfigurationVersion());
 
         apiRouteRepository.delete(route);
     }
@@ -154,7 +161,7 @@ public class RouteService {
 
         List<RouteVersionResponse> response = new ArrayList<RouteVersionResponse>();
         List<RouteConfigurationVersion> versions = versionRepository
-                .findAllByOrganizationIdAndRouteIdOrderByVersionNumberDesc(organisation.getId(), routeId);
+                .findAllByOrganisation_IdAndRouteIdOrderByVersionNumberDesc(organisation.getId(), routeId);
 
         for(RouteConfigurationVersion version : versions) {
             response.add(RouteVersionResponse.from(version));
@@ -280,19 +287,19 @@ public class RouteService {
     }
 
 
-    // @Transactional(readOnly = true)
-    // public List<AuditRecordResponse> getAuditRecords() {
-    //     Organization organization = tenantContext.getOrganization();
+    @Transactional(readOnly = true)
+    public List<AuditRecordResponse> getAuditRecords() {
+        Organisation organization = tenantContext.getOrganisation();
 
-    //     List<AuditRecordResponse> response = new ArrayList<AuditRecordResponse>();
+        List<AuditRecordResponse> response = new ArrayList<AuditRecordResponse>();
 
-    //     List<ControlPlaneAuditRecord> records = auditRecordRepository
-    //             .findAllByOrganizationIdOrderByCreatedAtDesc(organization.getId());
+        List<ControlPlaneAuditRecord> records = auditRecordRepository
+                .findAllByOrganisation_IdOrderByCreatedAtDesc(organization.getId());
 
-    //     for(ControlPlaneAuditRecord record : records) {
-    //         response.add(AuditRecordResponse.from(record));
-    //     }
-    //     return response;
-    // }
+        for(ControlPlaneAuditRecord record : records) {
+            response.add(AuditRecordResponse.from(record));
+        }
+        return response;
+    }
     
 }
