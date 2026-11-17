@@ -3,16 +3,16 @@ package in.sunnyshekhar.gatekeeper.gateway.client;
 import java.time.Instant;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import in.sunnyshekhar.gatekeeper.gateway.dto.requestDto.LoginRequest;
 import in.sunnyshekhar.gatekeeper.gateway.dto.responseDto.GatewayRoute;
 import in.sunnyshekhar.gatekeeper.gateway.dto.responseDto.LoginResponse;
-import io.lettuce.core.dynamic.annotation.Value;
+
 
 public class ManagementApiClient {
     private RestClient restClient;
@@ -22,7 +22,7 @@ public class ManagementApiClient {
     private Instant expiresAt;
 
     public ManagementApiClient(
-    @Value("${management.api.base-url}") String baseUrl,
+    @Value ("${management.api.base-url}") String baseUrl,
     @Value("${management.api.username}") String username,
     @Value("${management.api.password}") String password){
         this.restClient= RestClient.builder().baseUrl(baseUrl).build();
@@ -30,7 +30,7 @@ public class ManagementApiClient {
         this.password=password;
     }
 
-    public List<GatewayRoute> fetchActivRoutes(){
+    public List<GatewayRoute> fetchActiveRoutes(){
         ensureToken();
 
         try{
