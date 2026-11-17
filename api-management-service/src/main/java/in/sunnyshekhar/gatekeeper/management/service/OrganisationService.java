@@ -3,8 +3,6 @@ package in.sunnyshekhar.gatekeeper.management.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.springframework.cglib.core.Local;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +18,7 @@ import in.sunnyshekhar.gatekeeper.management.entity.ManagementUser;
 import in.sunnyshekhar.gatekeeper.management.entity.Organisation;
 import in.sunnyshekhar.gatekeeper.management.entity.OrganisationStatus;
 import in.sunnyshekhar.gatekeeper.management.entity.Role;
+import in.sunnyshekhar.gatekeeper.management.event.GatewayConfigurationEventService;
 import in.sunnyshekhar.gatekeeper.management.exception.ApiException;
 import in.sunnyshekhar.gatekeeper.management.repository.ManagementUserRepository;
 import in.sunnyshekhar.gatekeeper.management.repository.OrganisationRepository;
@@ -33,15 +32,18 @@ public class OrganisationService {
     private final PasswordEncoder passwordEncoder;
     private final TenantContext tenantContext;
     private final AuditService auditService;
+    private final GatewayConfigurationEventService gatewayConfigurationEventService;
 
     public OrganisationService(OrganisationRepository organisationRepository,ManagementUserRepository managementUserRepository, 
-                RoleRepository roleRepository,PasswordEncoder passwordEncoder, TenantContext tenantContext, AuditService auditService){
+                RoleRepository roleRepository,PasswordEncoder passwordEncoder, TenantContext tenantContext, AuditService auditService,
+                GatewayConfigurationEventService gatewayConfigurationEventService){
                             this.organisationRepository=organisationRepository;
                             this.managementUserRepository=managementUserRepository;
                             this.roleRepository=roleRepository;
                             this.passwordEncoder=passwordEncoder;
                             this.tenantContext=tenantContext;
                             this.auditService=auditService;
+                            this.gatewayConfigurationEventService=gatewayConfigurationEventService;
     }
 
 
@@ -63,7 +65,6 @@ public class OrganisationService {
 
         auditService.record(organisation,"CREATE ORGANISATON", "ORGANISATION", organisation.getId().toString(),
          startedAt, "Organisation created in PENDING status");
-
 
         return OrganisationResponse.from(organisation);
 
@@ -99,6 +100,8 @@ public class OrganisationService {
         auditService.record(organisation,"UPDATE ORGANISATON", "ORGANISATION", id.toString(),
          startedAt, "Organisation name and slug updated");
 
+         gatewayConfigurationEventService.publish("ORGANISATION_UPDATED", null,
+         organisation.getId(),null);
         return OrganisationResponse.from(organisation);
     }
 
@@ -119,6 +122,9 @@ public class OrganisationService {
         auditService.record(organisation,"CHANGE_ORGANISATON_STATUS", "ORGANISATION", id.toString(),
          startedAt, "Status changed to "+organisation.getStatus());
 
+         gatewayConfigurationEventService.publish("ORGANISATON"+organisation.getStatus(), null,
+         organisation.getId(),null);
+
         return OrganisationResponse.from(organisation);
     }
 
@@ -133,6 +139,9 @@ public class OrganisationService {
 
         auditService.record(organisation,"DELETE_ORGANISATON", "ORGANISATION", id.toString(),
         startedAt, "Organisation Soft Deleted");
+
+        gatewayConfigurationEventService.publish("ORGANISATON_DELETED", null,
+         organisation.getId(),null);
     }
 
     @Transactional
@@ -176,9 +185,9 @@ public class OrganisationService {
 
 
     @Transactional
-    public TenantAdminResponse updateTenantAdmin(Long organizationId, TenantAdminRequest request) {
+    public TenantAdminResponse updateTenantAdmin(Long organisationId, TenantAdminRequest request) {
         long startedAt = System.nanoTime();
-        ManagementUser user = getTenantAdminEntity(organizationId);
+        ManagementUser user = getTenantAdminEntity(organisationId);
 
         if(!user.getUsername().equals(request.getUsername())
                 && managementUserRepository.existsByUsername(request.getUsername())) {
