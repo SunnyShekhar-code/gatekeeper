@@ -1,4 +1,4 @@
-package in.sunnyshekhar.gatekeeper.gateway.dto;
+package in.sunnyshekhar.gatekeeper.gateway.dto.responseDto;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
